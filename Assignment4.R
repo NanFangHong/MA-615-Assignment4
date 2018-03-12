@@ -94,3 +94,74 @@ who.tidy <- who %>%
   separate(sexage, c("sex", "age"), sep = 1)
 who.tidy %>% count(country, year, type, sex) 
 
+# Tidy Data article:
+  
+# Use dplyr and tidyr to reproduce
+
+
+#3)table 4 -> table 6
+library(foreign)
+library(stringr)
+library(plyr)
+library(reshape2)
+library(xtable)
+
+pew<-read.spss("pew.sav", header=TRUE,stringsAsFactors = FALSE )
+pew <- as.data.frame(pew)
+religion <- pew[c("q16", "reltrad", "income")]
+religion$reltrad <- as.character(religion$reltrad)
+religion$reltrad <- str_replace(religion$reltrad, " Churches", "")
+religion$reltrad <- str_replace(religion$reltrad, " Protestant", " Prot")
+religion$reltrad[religion$q16 == " Atheist (do not believe in God) "] <- "Atheist"
+religion$reltrad[religion$q16 == " Agnostic (not sure if there is a God) "] <- "Agnostic"
+religion$reltrad <- str_trim(religion$reltrad)
+religion$reltrad <- str_replace_all(religion$reltrad, " \\(.*?\\)", "")
+
+religion$income <- c("Less than $10,000" = "<$10k", 
+                     "10 to under $20,000" = "$10-20k", 
+                     "20 to under $30,000" = "$20-30k", 
+                     "30 to under $40,000" = "$30-40k", 
+                     "40 to under $50,000" = "$40-50k", 
+                     "50 to under $75,000" = "$50-75k",
+                     "75 to under $100,000" = "$75-100k", 
+                     "100 to under $150,000" = "$100-150k", 
+                     "$150,000 or more" = ">150k", 
+                     "Don't know/Refused (VOL)" = "Don't know/refused")[religion$income]
+
+religion$income <- factor(religion$income, levels = c("<$10k", "$10-20k", "$20-30k", "$30-40k", "$40-50k", "$50-75k", 
+                                                      "$75-100k", "$100-150k", ">150k", "Don't know/refused"))
+
+counts <- count(religion, c("reltrad", "income"))
+names(counts)[1] <- "religion"
+
+tidy.clean<-xtable(counts[1:10, ], file = "pew-clean.tex")
+
+
+
+#4)table 7 -> table 8
+#4)convert table 7 to table 8
+
+options(stringsAsFactors = FALSE)
+library(lubridate)
+library(reshape2)
+library(stringr)
+library(plyr)
+library(xtable)
+library(magrittr)
+library(tidyr)
+
+bb <-read_csv("billboard.csv")
+bb.4 <- bb %>% gather(key="week", value ="rank", -year, -artist.inverted, -track, -time, -genre, -date.entered, -date.peaked) %>% 
+  select(year, artist=artist.inverted, time, track, date=date.entered, week, rank) %>% 
+  arrange(track) %>% 
+  filter(!is.na(rank))
+
+for (i in 1:nrow(bb.4)) {
+  bb.4[i, ]$week <- str_extract_all(bb.4[i, ]$week, '\\d')[[1]] %>% str_c(collapse = "")
+}
+
+#must to specified rename in the dplyr
+bb.10 <- bb.4 %>% arrange(artist, track) %>% 
+  mutate(date = date+(as.numeric(week)-1)*7) %>% 
+  mutate(rank = as.integer(rank))
+
